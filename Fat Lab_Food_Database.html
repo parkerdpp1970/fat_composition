@@ -1,0 +1,652 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fat Lab Explorer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Theme Colors */
+            --primary: #0ea5e9;       /* Sky Blue */
+            --primary-light: #e0f2fe; 
+            --bg: #f8fafc;            
+            --card: #ffffff;
+            --text: #0f172a;          
+            --text-light: #64748b;    
+            --border: #e2e8f0;
+
+            /* Fat Type Colors */
+            --sat: #ef4444;    /* Red (Saturated/Solid) */
+            --mono: #f59e0b;   /* Amber (Mono) */
+            --poly: #10b981;   /* Green (Poly/Fluid) */
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* INSTRUCTIONS BOX */
+        .instruction-box {
+            background: white;
+            border-bottom: 1px solid var(--border);
+            padding: 20px;
+            z-index: 10;
+        }
+        .instruction-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            color: var(--primary);
+            letter-spacing: 0.5px;
+            display: block;
+            margin-bottom: 5px;
+        }
+        h1 { margin: 0 0 5px 0; font-size: 1.5rem; }
+        .subtitle { font-size: 0.9rem; color: var(--text-light); }
+
+        /* MAIN CONTENT AREA */
+        .main-area {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* TABS */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+            scrollbar-width: none;
+        }
+        .tabs::-webkit-scrollbar { display: none; }
+
+        .tab-btn {
+            padding: 8px 14px;
+            border-radius: 20px;
+            background: white;
+            color: var(--text-light);
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+            border: 1px solid #e5e7eb;
+            font-size: 0.85rem;
+        }
+        .tab-btn:hover { background: #f1f5f9; }
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* FOOD GRID */
+        .food-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 15px;
+        }
+
+        .food-card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 2px solid transparent;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .food-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border-color: var(--primary);
+        }
+
+        .food-emoji { font-size: 2.5rem; margin-bottom: 10px; display: block; }
+        .food-name { font-weight: 600; font-size: 0.9rem; color: var(--text); line-height: 1.2; }
+        .action-hint { font-size: 0.7rem; color: var(--primary); margin-top: 8px; font-weight: 500; }
+
+        /* --- MODAL SYSTEM --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            backdrop-filter: blur(3px);
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        
+        .modal {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            transform: scale(0.9);
+            transition: transform 0.2s;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        .modal-overlay.active .modal { transform: scale(1); }
+        
+        .close-btn {
+            position: absolute; top: 15px; right: 20px;
+            font-size: 1.5rem; color: #94a3b8; cursor: pointer;
+        }
+
+        /* MODAL CONTENT */
+        .modal-header { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; }
+        .modal-emoji { font-size: 3.5rem; background: #f0f9ff; padding: 10px; border-radius: 12px; }
+        .modal-title h2 { margin: 0; font-size: 1.4rem; color: var(--text); }
+        
+        /* STATE BADGE */
+        .state-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 5px;
+        }
+        .state-solid { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        .state-liquid { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+
+        /* BAR CHART */
+        .chart-container { margin-bottom: 25px; }
+        .bar-wrapper {
+            height: 40px;
+            width: 100%;
+            background: #e2e8f0;
+            border-radius: 8px;
+            display: flex;
+            overflow: hidden;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        .bar-segment { height: 100%; transition: width 0.8s ease-out; }
+        
+        .legend { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-light); }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+        /* INFO TEXT */
+        .fact-box {
+            background: #f8fafc;
+            border-left: 4px solid var(--primary);
+            padding: 15px;
+            border-radius: 0 4px 4px 0;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #334155;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- HEADER -->
+    <div class="instruction-box">
+        <span class="instruction-title">Activity</span>
+        <h1>Fat Lab Explorer</h1>
+        <div class="subtitle">Pick a food source to analyze its fat composition. Is it solid or liquid? Why?</div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-area">
+        
+        <!-- TABS -->
+        <div class="tabs">
+            <button class="tab-btn active" id="btn-all" onclick="filterFoods('all')">All</button>
+            <button class="tab-btn" id="btn-plant" onclick="filterFoods('plant')">Plant & Nuts</button>
+            <button class="tab-btn" id="btn-animal" onclick="filterFoods('animal')">Animal</button>
+            <button class="tab-btn" id="btn-dairy" onclick="filterFoods('dairy')">Dairy</button>
+            <button class="tab-btn" id="btn-marine" onclick="filterFoods('marine')">Fish</button>
+            <button class="tab-btn" id="btn-processed" onclick="filterFoods('processed')">Processed</button>
+        </div>
+
+        <!-- GRID -->
+        <div class="food-grid" id="food-grid">
+            <!-- JS Populates this -->
+        </div>
+        
+        <div style="height: 50px;"></div>
+    </div>
+
+    <!-- ANALYSIS MODAL -->
+    <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+        <div class="modal">
+            <span class="close-btn" onclick="closeModalBtn()">&times;</span>
+            
+            <!-- HEADER info -->
+            <div class="modal-header">
+                <div class="modal-emoji" id="m-emoji">🧈</div>
+                <div class="modal-title">
+                    <h2 id="m-name">Butter</h2>
+                    <div id="m-state" class="state-badge state-solid">Solid at Room Temp</div>
+                </div>
+            </div>
+
+            <!-- VISUALIZATION -->
+            <div class="chart-container">
+                <div style="font-size:0.9rem; font-weight:600; margin-bottom:5px;">Fat Composition:</div>
+                
+                <div class="bar-wrapper">
+                    <div id="bar-sat" class="bar-segment" style="background:var(--sat); width:0%"></div>
+                    <div id="bar-mono" class="bar-segment" style="background:var(--mono); width:0%"></div>
+                    <div id="bar-poly" class="bar-segment" style="background:var(--poly); width:0%"></div>
+                </div>
+
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="dot" style="background:var(--sat)"></div> 
+                        <span id="val-sat">0%</span> Saturated
+                    </div>
+                    <div class="legend-item">
+                        <div class="dot" style="background:var(--mono)"></div> 
+                        <span id="val-mono">0%</span> Mono
+                    </div>
+                    <div class="legend-item">
+                        <div class="dot" style="background:var(--poly)"></div> 
+                        <span id="val-poly">0%</span> Poly
+                    </div>
+                </div>
+            </div>
+
+            <!-- DESCRIPTION -->
+            <div class="fact-box" id="m-desc">
+                Description text goes here.
+            </div>
+
+        </div>
+    </div>
+
+<script>
+    // DATA SOURCE
+    // Percentages are approx % of TOTAL FAT content.
+    const fatsDB = [
+        // --- ANIMAL FATS ---
+        {
+            id: 'steak', name: "Steak Fat (Beef)", category: "animal", emoji: "🥩",
+            sat: 50, mono: 42, poly: 4, solid: true,
+            desc: "Beef fat (tallow) is a roughly even mix of Saturated and Monounsaturated fat. It is solid, but melts easier than pure saturated fats."
+        },
+        {
+            id: 'chicken_breast', name: "Chicken Breast", category: "animal", emoji: "🍗",
+            sat: 30, mono: 45, poly: 21, solid: false,
+            desc: "A lean meat. The small amount of fat found in chicken breast muscle is softer than beef fat due to higher unsaturated content."
+        },
+        {
+            id: 'lard', name: "Beef Lard", category: "animal", emoji: "🥣",
+            sat: 50, mono: 42, poly: 4, solid: true,
+            desc: "Often used for frying because its high saturated content makes it stable at high heat."
+        },
+        {
+            id: 'goose', name: "Goose Fat", category: "animal", emoji: "🦢",
+            sat: 27, mono: 57, poly: 11, solid: false,
+            desc: "Unlike beef fat, Goose Fat is higher in <strong>Monounsaturated</strong> fat, making it semi-solid or liquid at room temp."
+        },
+        {
+            id: 'egg', name: "Egg Yolk", category: "animal", emoji: "🥚",
+            sat: 36, mono: 44, poly: 16, solid: false,
+            desc: "Fat in eggs is found in the yolk. It is a balanced mix, with slightly more Monounsaturated fat than saturated."
+        },
+
+        // --- DAIRY ---
+        {
+            id: 'butter', name: "Butter", category: "dairy", emoji: "🧈",
+            sat: 63, mono: 26, poly: 4, solid: true,
+            desc: "High in <strong>Saturated Fat</strong>. The fat molecules stack together tightly, making butter solid at room temperature."
+        },
+        {
+            id: 'ghee', name: "Ghee (Clarified Butter)", category: "dairy", emoji: "🏺",
+            sat: 65, mono: 29, poly: 4, solid: true,
+            desc: "Ghee is butter with milk solids and water removed. This concentrates the fat, resulting in a very high saturated fat content."
+        },
+        {
+            id: 'cream', name: "Double Cream", category: "dairy", emoji: "🥛",
+            sat: 65, mono: 25, poly: 4, solid: false,
+            desc: "Cream is an emulsion of fat in water. The fat itself is identical to butter fat (mostly saturated), but the water content keeps it liquid."
+        },
+        {
+            id: 'creme_fraiche', name: "Crème Fraîche", category: "dairy", emoji: "🥣",
+            sat: 65, mono: 25, poly: 4, solid: false,
+            desc: "Essentially soured cream. Like regular cream, the fat profile is highly saturated (butterfat)."
+        },
+        {
+            id: 'cheddar', name: "Mature Cheddar", category: "dairy", emoji: "🧀",
+            sat: 64, mono: 26, poly: 3, solid: true,
+            desc: "Cheese fat is highly saturated, which gives cheese its firm structure at room temperature."
+        },
+        {
+            id: 'camembert', name: "Camembert", category: "dairy", emoji: "🧀",
+            sat: 60, mono: 28, poly: 3, solid: true,
+            desc: "Soft cheeses still have high saturated fat content, but higher moisture content makes them softer than cheddar."
+        },
+        {
+            id: 'goat_milk', name: "Goat's Milk", category: "dairy", emoji: "🐐",
+            sat: 65, mono: 26, poly: 4, solid: false,
+            desc: "Similar profile to cow's milk, but the fat globules are smaller, which can make it easier to digest for some."
+        },
+        {
+            id: 'skimmed', name: "Skimmed Milk", category: "dairy", emoji: "🥛",
+            sat: 0, mono: 0, poly: 0, solid: false,
+            desc: "<strong>Trace Fat Only.</strong> Skimmed milk has had almost all fat removed (less than 0.3%)."
+        },
+        {
+            id: 'semi', name: "Semi-Skimmed Milk", category: "dairy", emoji: "🥛",
+            sat: 65, mono: 25, poly: 4, solid: false,
+            desc: "Contains about 1.7% fat total. The fat that <em>is</em> there has the same saturated profile as butter."
+        },
+
+        // --- PLANT OILS & NUTS ---
+        {
+            id: 'rapeseed', name: "Rapeseed Oil", category: "plant", emoji: "🌼",
+            sat: 7, mono: 63, poly: 28, solid: false,
+            desc: "Often sold as 'Vegetable Oil' in the UK/EU. It is very low in saturated fat and high in Monounsaturated fat."
+        },
+        {
+            id: 'veg_oil', name: "Vegetable Oil", category: "plant", emoji: "🥗",
+            sat: 14, mono: 50, poly: 33, solid: false,
+            desc: "Usually a blend (often Rapeseed or Soybean). It is designed to be neutral, high heat, and completely liquid."
+        },
+        {
+            id: 'sunflower', name: "Sunflower Oil", category: "plant", emoji: "🌻",
+            sat: 10, mono: 20, poly: 66, solid: false,
+            desc: "Very high in <strong>Polyunsaturated</strong> fats (Omega-6). These molecules are 'kinky' and don't stack, so it stays liquid."
+        },
+        {
+            id: 'palm', name: "Palm Oil", category: "plant", emoji: "🌴",
+            sat: 49, mono: 37, poly: 9, solid: true,
+            desc: "Semi-solid at room temperature. Its high saturation makes it very shelf-stable for processed foods."
+        },
+        {
+            id: 'olive', name: "Olive Oil", category: "plant", emoji: "🫒",
+            sat: 14, mono: 73, poly: 11, solid: false,
+            desc: "The gold standard for <strong>Monounsaturated</strong> fat (Oleic Acid). Liquid at room temp."
+        },
+        {
+            id: 'coconut', name: "Coconut Oil", category: "plant", emoji: "🥥",
+            sat: 82, mono: 6, poly: 2, solid: true,
+            desc: "An outlier! Despite being a plant oil, it is huge in <strong>Saturated Fat</strong> (82%), making it rock solid."
+        },
+        {
+            id: 'avocado', name: "Avocado", category: "plant", emoji: "🥑",
+            sat: 16, mono: 71, poly: 13, solid: false,
+            desc: "Very similar profile to Olive Oil—rich in heart-healthy Monounsaturated fats."
+        },
+        {
+            id: 'almond', name: "Almonds", category: "plant", emoji: "🌰",
+            sat: 8, mono: 65, poly: 25, solid: true,
+            desc: "Almonds are rich in monounsaturated fats. (Solid state refers to the nut, though extracted almond oil is liquid)."
+        },
+        {
+            id: 'walnut', name: "Walnuts", category: "plant", emoji: "🥜",
+            sat: 9, mono: 23, poly: 63, solid: true,
+            desc: "Unique among nuts for being very high in <strong>Polyunsaturated</strong> fats, including plant-based Omega-3 (ALA)."
+        },
+        {
+            id: 'soybean', name: "Soybean Oil", category: "plant", emoji: "🌱",
+            sat: 15, mono: 23, poly: 58, solid: false,
+            desc: "Mostly Polyunsaturated fat. This is the most common oil used in commercial frying and processed foods."
+        },
+        {
+            id: 'pumpkin', name: "Pumpkin Seeds", category: "plant", emoji: "🎃",
+            sat: 18, mono: 32, poly: 48, solid: true,
+            desc: "A great source of healthy oils, leaning towards Polyunsaturated fats."
+        },
+
+        // --- MARINE FATS ---
+        {
+            id: 'salmon', name: "Salmon", category: "marine", emoji: "🐟",
+            sat: 20, mono: 35, poly: 40, solid: false,
+            desc: "Cold water fish need fats that don't freeze in the ocean. This means high levels of liquid <strong>Polyunsaturated</strong> fats."
+        },
+        {
+            id: 'sardine', name: "Sardines", category: "marine", emoji: "🐟",
+            sat: 30, mono: 35, poly: 30, solid: false,
+            desc: "Oily fish like sardines are one of the best sources of EPA and DHA (long-chain Omega-3s)."
+        },
+        {
+            id: 'mackerel', name: "Mackerel", category: "marine", emoji: "🐟",
+            sat: 25, mono: 40, poly: 30, solid: false,
+            desc: "Similar to salmon, mackerel stores fat in its flesh, providing a high dose of unsaturated fatty acids."
+        },
+        {
+            id: 'tuna', name: "Tuna", category: "marine", emoji: "🐟",
+            sat: 27, mono: 26, poly: 37, solid: false,
+            desc: "Tuna is generally a lean fish. The fat it does contain has a balance of all types, including beneficial Omega-3s."
+        },
+        {
+            id: 'trout', name: "Trout", category: "marine", emoji: "🐟",
+            sat: 22, mono: 35, poly: 38, solid: false,
+            desc: "Freshwater trout has a very similar profile to salmon, rich in Polyunsaturated fats and Omega-3s."
+        },
+        {
+            id: 'herring', name: "Herring", category: "marine", emoji: "🐟",
+            sat: 22, mono: 50, poly: 24, solid: false,
+            desc: "A very oily fish. Interestingly, herring is higher in Monounsaturated fat than many other fish, but still very liquid at room temp."
+        },
+        {
+            id: 'cod', name: "Cod", category: "marine", emoji: "🎣",
+            sat: 18, mono: 18, poly: 54, solid: false,
+            desc: "A very lean white fish. It has very little total fat, but the oil it does have is highly unsaturated (liquid)."
+        },
+        {
+            id: 'haddock', name: "Haddock", category: "marine", emoji: "🐠",
+            sat: 18, mono: 15, poly: 57, solid: false,
+            desc: "Like Cod, Haddock is very low in fat. The small traces of fat present are mostly Polyunsaturated."
+        },
+
+        // --- PROCESSED ---
+        {
+            id: 'margarine', name: "Margarine (Soft)", category: "processed", emoji: "🧈",
+            sat: 20, mono: 45, poly: 35, solid: true,
+            desc: "Made from vegetable oils that are emulsified to be solid. Modern soft margarines are lower in saturated fat than butter."
+        },
+        {
+            id: 'fries', name: "French Fries", category: "processed", emoji: "🍟",
+            sat: 15, mono: 44, poly: 36, solid: false,
+            desc: "The fat profile depends on the frying oil (usually vegetable oil). Potatoes themselves have no fat; this is 100% absorbed oil."
+        },
+        {
+            id: 'crisps', name: "Packet of Crisps", category: "processed", emoji: "🥔",
+            sat: 13, mono: 37, poly: 50, solid: false,
+            desc: "Crisps are thin slices of potato fried in oil (usually Sunflower or Rapeseed). The fat profile matches the oil: low in saturation and liquid at room temp."
+        },
+        {
+            id: 'fried_chicken', name: "Fried Chicken", category: "processed", emoji: "🍗",
+            sat: 25, mono: 45, poly: 25, solid: true,
+            desc: "A combination of chicken skin fat and the vegetable oil used for frying. High in total calories."
+        },
+        {
+            id: 'sausage', name: "Sausages (Pork)", category: "processed", emoji: "🌭",
+            sat: 38, mono: 45, poly: 12, solid: true,
+            desc: "Processed meats often have added fat (lard/pork back fat) mixed in, making them high in both Saturated and Monounsaturated fats."
+        },
+        {
+            id: 'pie', name: "Meat Pie / Pastry", category: "processed", emoji: "🥧",
+            sat: 40, mono: 40, poly: 15, solid: true,
+            desc: "Flaky pastry requires solid fats like lard, butter, or shortening to create the layers."
+        },
+        {
+            id: 'croissant', name: "Croissant", category: "processed", emoji: "🥐",
+            sat: 60, mono: 30, poly: 5, solid: true,
+            desc: "Laminated dough uses massive amounts of butter folded into layers. The fat profile is almost identical to pure butter."
+        },
+        {
+            id: 'cake', name: "Baked Goods (Cake)", category: "processed", emoji: "🍰",
+            sat: 45, mono: 35, poly: 15, solid: true,
+            desc: "Often made with butter or palm oil, leading to high <strong>Saturated Fat</strong>."
+        },
+        {
+            id: 'donut', name: "Donuts", category: "processed", emoji: "🍩",
+            sat: 50, mono: 35, poly: 10, solid: true,
+            desc: "Fried dough is often cooked in Palm Oil or Shortening to keep the surface dry and non-greasy, resulting in high saturated fat."
+        },
+        {
+            id: 'cookie', name: "Cookies/Biscuits", category: "processed", emoji: "🍪",
+            sat: 50, mono: 30, poly: 15, solid: true,
+            desc: "Industrial biscuits often use Palm Oil or Hydrogenated Vegetable fats to keep them solid and shelf-stable."
+        },
+        {
+            id: 'crackers', name: "Cheese Crackers", category: "processed", emoji: "🍘",
+            sat: 20, mono: 50, poly: 25, solid: true,
+            desc: "Usually made with vegetable oils (like soybean or canola) mixed with cheese solids."
+        },
+        {
+            id: 'chocolate', name: "Chocolate", category: "processed", emoji: "🍫",
+            sat: 60, mono: 33, poly: 3, solid: true,
+            desc: "Cocoa butter is unique: it is highly saturated (solid) but melts exactly at body temperature, giving chocolate its smooth mouthfeel."
+        }
+    ];
+
+    const grid = document.getElementById('food-grid');
+    const modalOverlay = document.getElementById('modal-overlay');
+
+    // --- RENDER GRID ---
+    // RENAMED from renderFoods to filterFoods to match HTML onclick
+    function filterFoods(filter = 'all') {
+        grid.innerHTML = '';
+        const foodsToShow = filter === 'all' 
+            ? fatsDB 
+            : fatsDB.filter(f => f.category === filter);
+
+        foodsToShow.forEach(food => {
+            const card = document.createElement('div');
+            card.className = `food-card`;
+            card.innerHTML = `
+                <span class="food-emoji">${food.emoji}</span>
+                <span class="food-name">${food.name}</span>
+                <span class="action-hint">Analyze</span>
+            `;
+            card.onclick = () => openModal(food);
+            grid.appendChild(card);
+        });
+
+        // Update Tabs visual
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        
+        // Add active class to the correct button ID
+        if(filter === 'all') document.getElementById('btn-all').classList.add('active');
+        if(filter === 'plant') document.getElementById('btn-plant').classList.add('active');
+        if(filter === 'animal') document.getElementById('btn-animal').classList.add('active');
+        if(filter === 'dairy') document.getElementById('btn-dairy').classList.add('active');
+        if(filter === 'marine') document.getElementById('btn-marine').classList.add('active');
+        if(filter === 'processed') document.getElementById('btn-processed').classList.add('active');
+    }
+
+    // --- MODAL LOGIC ---
+    function openModal(food) {
+        // 1. Set Header
+        document.getElementById('m-emoji').innerText = food.emoji;
+        document.getElementById('m-name').innerText = food.name;
+        
+        // 2. Set State Badge
+        const stateBadge = document.getElementById('m-state');
+        
+        // Handle Skimmed Milk edge case
+        if(food.sat + food.mono + food.poly === 0) {
+            stateBadge.innerText = "Fat Free (Liquid)";
+            stateBadge.className = "state-badge state-liquid";
+        } else if (food.solid) {
+            stateBadge.innerText = "Solid at Room Temp";
+            stateBadge.className = "state-badge state-solid";
+        } else {
+            stateBadge.innerText = "Liquid at Room Temp";
+            stateBadge.className = "state-badge state-liquid";
+        }
+
+        // 3. Set Description
+        document.getElementById('m-desc').innerHTML = food.desc;
+
+        // 4. Animate Bars
+        // Reset width first to allow animation
+        document.getElementById('bar-sat').style.width = '0%';
+        document.getElementById('bar-mono').style.width = '0%';
+        document.getElementById('bar-poly').style.width = '0%';
+
+        // Set Labels
+        document.getElementById('val-sat').innerText = food.sat + "%";
+        document.getElementById('val-mono').innerText = food.mono + "%";
+        document.getElementById('val-poly').innerText = food.poly + "%";
+
+        modalOverlay.classList.add('active');
+
+        // Trigger animation after slight delay
+        setTimeout(() => {
+            document.getElementById('bar-sat').style.width = food.sat + '%';
+            document.getElementById('bar-mono').style.width = food.mono + '%';
+            document.getElementById('bar-poly').style.width = food.poly + '%';
+        }, 100);
+    }
+
+    function closeModal(e) {
+        if (e.target === modalOverlay) {
+            modalOverlay.classList.remove('active');
+        }
+    }
+    
+    function closeModalBtn() {
+        modalOverlay.classList.remove('active');
+    }
+
+    // --- INIT ---
+    // Initial call to populate grid
+    filterFoods('all');
+
+</script>
+
+<script>window.parent.postMessage({ action: "ready" }, "*"); 
+ 
+window.console = new Proxy(console, {
+  get(target, prop) {
+    if (['log', 'warn', 'error'].includes(prop)) {
+      return new Proxy(target[prop], {
+        apply(fn, thisArg, args) {
+          fn.apply(thisArg, args);
+          window.parent.postMessage({ action: 'console', 
+            type: prop, 
+            args: args.map((arg) => {
+              try {
+                return JSON.stringify(arg).replace(/^["']|["']$/g, '');
+              } catch (e) {
+                return arg;
+              }
+            }) 
+          }, '*');
+        }
+      });
+    }
+    return target[prop];
+  }
+});
+</script></body>
+</html>
